@@ -1,2 +1,1 @@
-# Autoconnect-VPN
- Autoconnect / reconnect VPN. Script helper for NetworkManager.
+Autoconnect / reconnect VPN. Script helper for NetworkManager.
