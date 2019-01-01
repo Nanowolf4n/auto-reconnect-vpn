@@ -1,8 +1,7 @@
 #!/bin/bash +x
 
-# Source: http://www.gabsoftware.com/tips/automatically-reconnect-to-your-vpn-on-linux/
 # antoniy  https://gist.github.com/antoniy
-# Script forked: Wolflairovi4
+# forked: Wolflairovi4
 
 # Description:
 # Make the script executable "chmod +x /path/to/the/script.sh
@@ -15,59 +14,50 @@
 #----------------------------------------
 
 # You can see those with "nmcli con" command
-VPN_NAME="Change to your" 
-VPN_UID="Change to your"
+VPN_NAME="Name"
+VPN_UID="UUID"
 
 # Delay in secconds
-DELAY=5
+DELAY=3
 
-# File path with write permission to the executing user to store script status information
+#Write logs to Syslog
 ENABLE_LOG=true
 
 # Enable/disable ping connection check
 PING_CHECK_ENABLED=true
 
-# Check IP/Hostname #
-CHECK_HOST="1.1.1.1"
+# Check IP/Hostname
+CHECK_HOST="8.8.8.8"
 
 # Configure DISPLAY variable for desktop notifications
 DISPLAY=0.0
 
 #----------------------------------------
 
- #syslog writer
  if [[ $ENABLE_LOG != false ]]; then
  	 exec 1> >(logger -s -t $(basename $0)) 2>&1
  fi
- #---
 if [[ $1 == "stop" ]]; then
-
   nmcli connection down uuid $VPN_UID
   echo "VPN monitoring service STOPPED!"
   notify-send "VPN monitoring service STOPPED!"
-  
   SCRIPT_FILE_NAME=`basename $0`
   PID=`pgrep -f $SCRIPT_FILE_NAME`
   kill $PID  
-elif [[ $1 == "start" ]]; then
-  while [ "true" ]
-  do
-    VPNCON=$(nmcli connection show | grep $VPN_NAME | cut -f1 -d " ")
-    if [[ $VPNCON != $VPN_NAME ]]; then
-      echo "Disconnected from $VPN_NAME, trying to reconnect..."
-      (sleep 0.5 && nmcli connection up uuid $VPN_UID)
-    else
-       echo "Already connected to $VPN_NAME!"
-    fi
-    VPN_EN=$(nmcli connection show --active | grep -o $VPN_NAME)
+	elif [[ $1 == "start" ]]; then
+	echo "VPN monitoring service STARTED!"
+#	notify-send "VPN monitoring service STARTED!"
+	while [ "true" ]
+do
+	VPN_EN=$(nmcli connection show --active | grep -o $VPN_NAME)
     if [[ $VPN_NAME  != $VPN_EN ]]; then
-      (nmcli connection up uuid $VPN_UID)
-      echo "Current VPN connection is not active! Trying to enable."
+      echo "Current VPN connection is not active! Trying to enable..."
+      (sleep 0.5 && nmcli connection up uuid $VPN_UID)
     fi
     sleep $DELAY
     if [[ $PING_CHECK_ENABLED = true ]]; then
-      PINGCON=$(ping $CHECK_HOST -c1 -q | grep -E '1 received')
-      if [[ $PINGCON != *1*received* ]]; then
+      PINGCON=$(fping -t 800 $CHECK_HOST | grep -o 'alive')
+      if [[ $PINGCON != alive ]]; then
         echo "Ping check timeout ($CHECK_HOST), trying to reconnect..."
         (nmcli connection down uuid $VPN_UID)
         (sleep 0.5 && nmcli connection up uuid $VPN_UID)
@@ -75,9 +65,8 @@ elif [[ $1 == "start" ]]; then
 #        echo "Ping check ($CHECK_HOST) - OK!"
       fi
     fi
-  done
-  echo "VPN monitoring service STARTED!"
- # notify-send "VPN monitoring service STARTED!"
+done;
+
 else 
   echo "Unrecognised command: $0 $@"
   echo "Please use $0 [start|stop]" 
